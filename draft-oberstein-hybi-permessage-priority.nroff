@@ -86,28 +86,28 @@ Table of Contents
      1.1  Conformance Requirements and Complementary Terminology  . .  4
      1.2  Complementary Terminology . . . . . . . . . . . . . . . . .  4
    2  WebSocket Per-message Priority Extension  . . . . . . . . . . .  5
-   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  5
-     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  6
-   4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  6
-     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  8
-   5  permessage-priority extension . . . . . . . . . . . . . . . . .  9
-     5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  9
-     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  9
-       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  9
-       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . . 10
-     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 11
+   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  6
+     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  7
+   4  Message Framing . . . . . . . . . . . . . . . . . . . . . . . .  7
+     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  9
+   5  Priority-based Processing . . . . . . . . . . . . . . . . . . . 10
+     5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . . 10
+     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . . 10
+       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . . 10
+       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . . 11
+     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 12
    6  Application Programming Interface Guideline . . . . . . . . . . 12
    7  Security Considerations . . . . . . . . . . . . . . . . . . . . 13
-   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 13
+   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 14
      8.1  Registration of the "permessage-priority" WebSocket
-          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 13
+          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 14
      8.2  Registration of the "Per-message Priority" WebSocket 
-          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 13
-   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 14
-   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 14
-     10.1  Normative References . . . . . . . . . . . . . . . . . . . 14
-     10.2  Informative References . . . . . . . . . . . . . . . . . . 14
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 14
+          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 14
+   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 15
+   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+     10.1  Normative References . . . . . . . . . . . . . . . . . . . 15
+     10.2  Informative References . . . . . . . . . . . . . . . . . . 15
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 15
 .fi
 .in 3
 
@@ -205,6 +205,27 @@ corresponding extension negotiation response in the
 .ti 0
 2  WebSocket Per-message Priority Extension
 
+The WebSocket permessage-priority extension allows senders of WebSocket messages to specify a priority for the message to be sent, and optionally, specify a priority hint for reply messages in case the message sent is part of a request/response message exchange.
+
+The extension specifially addresses the scenario where the network connection between two endpoints is unable to keep up with the amount of data to be transferred, and data to be sent queues up at the sending leg due to TCP backpressure.
+
+The queued up data is then reordered before sending so that payload of high-priority messages gets sent earlier than low-priority message payload.
+
+Conceptionally, the sender maintains a priority-based queue of outgoing WebSocket fragments to be sent. When an application enqueues a message to be sent with given priority, the message payload is fragmented, and the fragments are inserted into the outgoing WebSocket frame queue according to the priority specified.
+
+The WebSocket permessage-priority extension defines clear rules for reordering (see section 5.1), so applications can reason about ordering and still assign needed semantics depending on message order. 
+
+Since, in the presence of the extension, more than one WebSocket message can be in flight (in each direction), the extension introduces "Message IDs" that allow to correlate the payload transmitted in WebSocket fragments for multiple messages in flight.
+
+The core parts of this extension are defined in the following sections:
+
+.in 6
+ 3. Extension Negotiation
+
+ 4. Message Framing
+
+ 5. Priority-based Processing
+.in 3
 
 
 .ti 0
@@ -262,7 +283,7 @@ Sec-WebSocket-Extensions:
 
 
 .ti 0
-4  Framing
+4  Message Framing
 
 The permessage-priority extension operates only on non-control messages. Control messages remain completely unchanged.
 
@@ -348,7 +369,7 @@ Since non-prioritized messages have an implicit "Message ID" 0, above applies to
 
 
 .ti 0
-5  permessage-priority extension
+5  Priority-based Processing
 
 .ti 0
 5.1  Reordering Rules
