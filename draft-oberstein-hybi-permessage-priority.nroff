@@ -94,19 +94,19 @@ Table of Contents
      5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
        5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  8
        5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . .  9
-     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 10
-   6  Application Programming Interface Guideline . . . . . . . . . . 10
-   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 12
-   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 12
+     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 11
+   6  Application Programming Interface Guideline . . . . . . . . . . 12
+   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 13
+   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 13
      8.1  Registration of the "permessage-priority" WebSocket
-          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 12
+          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 13
      8.2  Registration of the "Per-message Priority" WebSocket 
-          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 12
-   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 13
-   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
-     10.1  Normative References . . . . . . . . . . . . . . . . . . . 13
-     10.2  Informative References . . . . . . . . . . . . . . . . . . 13
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 13
+          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 13
+   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 14
+   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+     10.1  Normative References . . . . . . . . . . . . . . . . . . . 14
+     10.2  Informative References . . . . . . . . . . . . . . . . . . 14
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 14
 .fi
 .in 3
 
@@ -412,6 +412,7 @@ Implementations SHOULD allow applications to specify the "Message Priority" and 
 Implementations SHOULD fragment messages into fragments of 1 - 128kB to balance head-of-line blocking and latency limits with processing overhead and wire-level efficiency.
 
 
+.bp
 .ti 0
 5.3  Intermediaries
 
@@ -446,6 +447,7 @@ or
 .in 3
 
 
+.bp
 .ti 0
 6  Application Programming Interface Guideline
 
