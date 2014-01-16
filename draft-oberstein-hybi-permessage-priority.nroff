@@ -89,6 +89,7 @@ Table of Contents
    3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  4
      3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  5
    4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  5
+     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  7
    5  permessage-priority extension . . . . . . . . . . . . . . . . .  8
      5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  8
      5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
@@ -292,23 +293,24 @@ Fragments of non-prioritized messages have the RSV2 bit unset, and are unchanged
 Message ID:   32 bit
 
 .in 6
-The "Message ID" is interpreted as an unsigned integer in network byte order and provides a sender-chosen ID for the prioritized message. The ID carries no semantic meaning and is used by the receiver to correlate frames that form fragments of a given message. The ID 0 MUST NOT be used on prioritized messages. A peer receiving a prioritized message with ID 0 MUST _Fail the WebSocket Connection_.
+The "Message ID" is interpreted as an unsigned integer in network byte order and provides a sender-chosen ID for the prioritized message. The ID carries no semantic meaning and is used by the receiver to correlate frames that form fragments of a given message. The ID 0 MUST NOT be used on prioritized messages. A peer receiving a prioritized message with "Message ID" 0 MUST _Fail the WebSocket Connection_. The ID 0 is used as the implicit ID of non-prioritized messages.
 .in 3
 
 .ti 3
 Message Priority:  16 bit
 
 .in 6
-The "Message Priority" is interpreted as an unsigned integer in network byte order and provides the desired message priority for sending. The value 0 is the lowest priority, the value 65535 is the highest priority.
+The "Message Priority" is interpreted as an unsigned integer in network byte order and provides the desired message priority for sending. The value 1 is the lowest priority, the value 65535 is the highest priority. The value 0 MUST NOT be used. A peer receiving a prioritized message with "Message Priority" 0 MUST _Fail the WebSocket Connection_.
 .in 3
 
 .ti 3
 Response Priority Hint:  16 bit
 
 .in 6
-The "Response Priority Hint" is interpreted as an unsigned integer in network byte order and provides a hint to the receiver for the message priority to use when replying to the received message, in case the sent message is part of a request/response message exchange. The value 0 is the lowest priority, the value 65535 is the highest priority.
+The "Response Priority Hint" is interpreted as an unsigned integer in network byte order and provides a hint to the receiver for the message priority to use when replying to the received message, in case the sent message is part of a request/response message exchange. The value 1 is the lowest priority, the value 65535 is the highest priority. The value 0 indicates that the sender did not specify a hint on response priority (either because the application did not specify response priority, or not response is expected anyway).
 .in 3
 
+.ti 0
 4.1  Fragment Processing
 
 The rules for processing fragmented messages as defined in the WebSocket base protocol apply to permessage-priority extension on a per "Message ID" basis.
@@ -316,15 +318,12 @@ The rules for processing fragmented messages as defined in the WebSocket base pr
 In particular:
 
 .in 6
-1. For fragmented messages, all but the first fragment MUST have "Opcode" 0, and the last frame has it's FIN bit set.
+1. For fragmented messages, all but the first fragment for the given "Message ID" MUST have "Opcode" 0, and the last frame MUST have it's FIN bit set. When a continuation frame is received for a "Message ID" that was not yet started, the peer MUST _Fail the WebSocket Connection_.
 
-2. All continuation fragments of a fragmented message for a given ID MUST have "Opcode" 0. A peer MUST _Fail the WebSocket Connection_ when a non-continuation frame for an already started message ID is received.
+2. All continuation fragments of a fragmented message for a given "Message ID" MUST have "Opcode" 0. A peer MUST _Fail the WebSocket Connection_ when a non-continuation frame for an already started "Message ID" is received.
 
-3. When a continuation frame is received for a message ID that was not yet started, the peer MUST _Fail the WebSocket Connection_.
+Since non-prioritized messages have an implicit "Message ID" 0, above applies to all messages, prioritized or not.
 .in 3
-
-Since non-prioritized messages have an implicit "Message ID" 0, above applies to all messages.
-
 
 
 .ti 0
