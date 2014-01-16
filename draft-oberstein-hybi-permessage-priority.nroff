@@ -377,12 +377,12 @@ Since non-prioritized messages have an implicit "Message ID" 0, above applies to
 Frames in the frame send queue are reordered according to these rules:
 
 .in 6
-1) A frame of a message being sent with "Message Priority" P MUST be pulled ahead another frame inside the frame send queue, if and only if the other frame's "Message Priority" is strictly smaller than P.
+1) A frame of a message being sent with "Message Priority" P MUST be pulled ahead another frame inside the frame send queue, if and only if P is strictly smaller than the other frame's "Message Priority".
 
 2) Frames that belong to a non-prioritized message are treated like frames belonging to a message with highest priority (and hence P = 1).
 .in 3
 
-In other words, frames of messages with equal "Message Priority" are never reordered and a frame of a message of low priority is never pulled ahead of frames of messages with high priority.
+In other words, frames of messages with equal "Message Priority" are never reordered and a frame of a message of low priority is never pulled ahead of frames of messages with higher priority.
 
 Also, frames belonging to a single message, prioritized or non-prioritized are never reordered with respect to each other.
 
