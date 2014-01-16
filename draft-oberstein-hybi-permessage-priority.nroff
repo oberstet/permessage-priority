@@ -4,21 +4,22 @@
 .lt 7.2i
 .nr LL 7.2i
 .nr LT 7.2i
-.ds LF <Author> 
+.ds LF Oberstein 
 .ds RF FORMFEED[Page %]
-.ds LH INTERNET DRAFT
-.ds RH <Issue Date>
-.ds CH <Document Title>
-.ds CF Expires <Expiry Date>
+.ds LH Internet-Draft
+.ds RH January 2014
+.ds CH Priority Extension for WebSocket
+.ds CF Expires July 20, 2014
 .hy 0
 .nh
 .ad l
 .in 0
 
 .nf
-.tl 'INTERNET-DRAFT''<Author>'
-.tl 'Intended Status: <Status, e.g.Proposed Standard>''(<Author Org>)'
-.tl 'Expires: <Expiry Date>''<Issue Date>'
+.tl 'Hybi Working Group''T. Oberstein'
+.tl 'Internet-Draft''Tavendo GmbH'
+.tl 'Intended Status: Standards Track''January 16, 2014'
+.tl 'Expires: <Expiry Date>'
 .fi
 
 .\" Note. The ".tl" directive is used to generate the leading header 
@@ -32,8 +33,8 @@
 .\" This and other comments in this template can safely be deleted.
 
 .ce 2
-<Standard Name> 
-draft-ietf-groupOrSubmitter-name-00
+Message Priority Extension for WebSocket 
+draft-oberstein-hybi-permessage-priority
 .fi
 .in 3
 
@@ -41,8 +42,15 @@ draft-ietf-groupOrSubmitter-name-00
 .ti 0
 Abstract
 
-<Abstract Text>
+This document specifies an extension to the WebSocket protocol that adds
+message priorities to WebSocket data messages.
+Endpoints and intermediaries supporting this extension can prioritize the
+transmission of WebSocket messages according to assigned priorities.
+The strict message ordering requirement of WebSocket is relaxed, allowing
+to transmit messages of high priority without blocking of transmission when
+a low priority message is already being sent.
 
+Please send feedback to the hybi@ietf.org mailing list.
 
 .ti 0
 Status of this Memo
@@ -62,7 +70,7 @@ The list of Internet-Draft Shadow Directories can be accessed at http://www.ietf
 Copyright and License Notice\" Boilerplate from December 2009
 
 .\" NOTE: Insert current <year> in the following paragraph
-Copyright (c) <year> IETF Trust and the persons identified as the document authors. All rights reserved.
+Copyright (c) 2014 IETF Trust and the persons identified as the document authors. All rights reserved.
 
 This document is subject to BCP\078 and the IETF Trust's Legal Provisions Relating to IETF Documents \%(http://trustee.ietf.org/license-info) in effect on the date of publication of this document. Please review these documents carefully, as they describe your rights and restrictions with respect to this document. Code Components extracted from this document must include Simplified BSD License text as described in Section\04.e of the Trust Legal Provisions and are provided without warranty as described in the Simplified BSD License.
 
@@ -75,14 +83,25 @@ Table of Contents
 
 .nf
    1  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . .  3
-     1.1  Terminology . . . . . . . . . . . . . . . . . . . . . . . .  3
-   2.  Title  . . . . . . . . . . . . . . . . . . . . . . . . . . . .  3
-   3  Security Considerations . . . . . . . . . . . . . . . . . . . .  4
-   4  IANA Considerations . . . . . . . . . . . . . . . . . . . . . .  4
-   5  References  . . . . . . . . . . . . . . . . . . . . . . . . . .  4
-     5.1  Normative References  . . . . . . . . . . . . . . . . . . .  4
-     5.2  Informative References  . . . . . . . . . . . . . . . . . .  4
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . .  4
+     1.1  Conformance Requirements and Complementary Terminology  . .  3
+     1.2  Complementary Terminology . . . . . . . . . . . . . . . . .  3
+   2  WebSocket Per-message Priority Extension  . . . . . . . . . . .  4
+   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  4
+     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  5
+   4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  5
+   5  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . . .  5
+   6  permessage-priority extension . . . . . . . . . . . . . . . . .  5
+   7  Security Considerations . . . . . . . . . . . . . . . . . . . .  6
+   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . .  6
+     8.1  Registration of the "permessage-priority" WebSocket
+          Extension Name  . . . . . . . . . . . . . . . . . . . . . .  6
+     8.2  Registration of the "Per-message Priority" WebSocket 
+          Framing Header Bit  . . . . . . . . . . . . . . . . . . . .  6
+   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . .  7
+   10  References . . . . . . . . . . . . . . . . . . . . . . . . . .  7
+     10.1  Normative References . . . . . . . . . . . . . . . . . . .  7
+     10.2  Informative References . . . . . . . . . . . . . . . . . .  7
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . .  7
 .fi
 .in 3
 
@@ -95,13 +114,69 @@ Table of Contents
 <Introduction Text>
 
 .ti 0
-1.1  Terminology
+1.1  Conformance Requirements and Complementary Terminology
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in RFC 2119 [RFC2119].
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in RFC 2119 [RFC2119].
+
+Requirements phrased in the imperative as part of algorithms (such as
+"strip any leading space characters" or "return false and abort these
+steps") are to be interpreted with the meaning of the key word ("MUST", "SHOULD",
+"MAY", etc.) used in introducing the algorithm.
+
+Conformance requirements phrased as algorithms or specific steps can be implemented
+in any manner, so long as the end result is equivalent.  In particular, the
+algorithms defined in this specification are intended to be easy to understand and
+are not intended to be performant.
+
+This document references the procedure to _Fail the WebSocket Connection_.
+This procedure is defined in Section 7.1.7 of [RFC6455].
+
+This document references the event that _The WebSocket Connection is Established_
+and the event that _A WebSocket Message Has Been Received_.
+These events are defined in Section 4.1 and Section 6.2, respectively, of [RFC6455].
 
 
 .ti 0
-2.  Title
+1.2  Complementary Terminology
+
+This document defines some terms about WebSocket and WebSocket
+Extension mechanism that are underspecified or not defined at all in
+[RFC6455].  This terminology is effective only in this document and
+any other documents that refer to this section.
+
+Non-control message means a message that consists of non-control
+frames as defined in Section 5.6 of [RFC6455].
+
+Message payload (or payload of a message) means concatenation of the
+payload data portion of all frames representing a single message, as
+well as how /data/ is formed from in Section 6.2 of [RFC6455].
+
+Extension in use next to extension X means the extension listed next
+to X in the "Sec-WebSocket-Extensions" header in the server's opening
+handshake as defined in Section 9.1 of [RFC6455].  Such an extension
+is applied to outgoing data from the application right after X on
+sender side but applied right before X to incoming data from the
+underlying transport.
+
+Extension negotiation offer means each element in the
+"Sec-WebSocket-Extensions" header in the client's opening handshake.
+
+Extension negotiation response means each element in the
+"Sec-WebSocket-Extensions" header in the server's opening handshake.
+
+Accept an extension negotiation offer means including a corresponding
+extension negotiation response in the "Sec-WebSocket-Extensions"
+header in the server's opening handshake.
+
+Decline an extension negotiation offer means not including a
+corresponding extension negotiation response in the
+"Sec-WebSocket-Extensions" header in the server's opening handshake.
+
+
+.ti 0
+2  WebSocket Per-message Priority Extension
 
 .\" Comment line providing info for the Authors or the RFC Editor
 <Document text>
@@ -133,24 +208,155 @@ However, the characters \\0, \\&, \\%, \\" are displayed.
 C:\\dir\\subdir\\file.ext  Shows inclusion of backslash "\\".
 
 
+.ti 0
+3  Extension Negotiation
+
+To offer use of the Permessage-Priority Extension, a client includes a "Sec-WebSocket-Extensions"
+header in the client's opening handshake of the WebSocket connection that contains
+the value "permessage-priority".
+
+There are no parameters to the extension offer.
+
+To accept an offer to use the Permessage-Priority Extension, a server includes a "Sec-WebSocket-Extensions"
+header in the server's response during the opening handshake of the WebSocket connection.
+
+There are no parameters to the extension acceptance.
+
+A server MUST NOT accept a Permessage-Priority extension offer together with another
+extension if the Permessage-Priority extension will conflict with the extension on use
+of the RSV2 bit.  A client that receives a response accepting a Permessage-Priority extension
+offer together with such an extension MUST _Fail the WebSocket Connection_.
+
+A server declines Permessage-Priority extension offer by not including any element
+with the value "permessage-priority" in the "Sec-WebSocket-Extensions" header in it's response.
+If a server responds with no "permessage-priority" element in the "Sec-WebSocket-Extensions"
+header, both endpoints proceed without Per-message Priority once _the WebSocket Connection is
+established_.
+
+If a server responds with a "permessage-priority" in the "Sec-WebSocket-Extensions" header
+and _the WebSocket Connection is established_, both endpoints MUST use the algorithm
+described in Section 6 to exchange prioritized messages.
+
+.ti 0
+3.1  Negotiation Examples
+
+The following are examples for the "Sec-WebSocket-Extensions" header in WebSocket opening
+handshake client requests and server responses-
+
+.ti 3
+Offer (client-to-server):
+
+.ti 6
+permessage-priority
+
+.ti 3
+Accept (server-to-client):
+
+.ti 6
+permessage-priority
+
+
+.ti 0
+4  Framing
+
+.ti 0
+5  Intermediaries
+
+.ti 0
+6  permessage-priority extension
+
 .bp
 .ti 0
-3  Security Considerations
+7  Security Considerations
 
-<Security considerations text>
+With Per-message Priority Extension active, there can be more than one message in flight
+in each direction, and hence, additional buffering might be required on endpoints and
+intermediaries.
+
+A rogue implementation or an attacker might use this to mount a denial-of-service attack,
+exhausting memory in the target. For example, an attacker might start a large number of
+prioritized messages, but never end them.
+
+WebSocket endpoints and intermediaries supporting the Per-message Priority Extension SHOULD
+therefor provide means to effectively limit the total buffering memory in use on a WebSocket
+connection, and fail the WebSocket connection when that limit is reached.
 
 
 .ti 0
-4  IANA Considerations
-
-<IANA considerations text>
-
-
-.ti 0
-5  References
+8  IANA Considerations
 
 .ti 0 
-5.1  Normative References
+8.1  Registration of the "permessage-priority" WebSocket Extension Name
+
+This section describes a WebSocket extension name registration in the WebSocket
+Extension Name Registry [RFC6455].
+
+Extension Identifier
+
+.ti 6
+permessage-priority
+
+Extension Common Name
+
+.ti 6
+WebSocket Per-message Priority
+
+Extension Definition
+
+.ti 6
+This document.
+
+Known Incompatible Extensions
+
+.ti 6
+None
+
+The "permessage-priority" extension name is used in the "Sec-WebSocket-Extensions"
+header in the WebSocket opening handshake to negotiate use of the
+permessage-priority extension.
+
+
+.ti 0
+8.2  Registration of the "Per-message Priority" WebSocket Framing Header Bit
+
+This section describes a WebSocket framing header bit registration in the WebSocket
+Framing Header Bits Registry [RFC6455].
+
+Header Bit
+
+.ti 6
+RSV2
+
+Common Name
+
+.ti 6
+Per-message Priority
+
+Meaning
+
+.ti 6
+The message is prioritized or not.
+
+Reference
+
+.ti 6
+Section X of this document.
+
+The "Per-message Priority" framing header bit is used on all fragments of non-control
+messages to indicate whether the fragment belongs to a prioritized message or not.
+
+
+.ti 0
+9  Acknowledgements
+
+Tbd.
+
+
+.ti 0
+10  References
+
+.ti 0 
+10.1  Normative References
 
 .in 14
 .\" \# REF  -- Managed reference list. Syntax: [RFC]nnnn[;Label], ... ,[RFC]nnnn[;Label]
@@ -161,9 +367,12 @@ C:\\dir\\subdir\\file.ext  Shows inclusion of backslash "\\".
 .\" In order to execute any change, click on the 'Update All' button or select "Update 'Table of Contents' and References"
 .\" from the "Edit" menu or press <F3>.
 .\" NOTE: Managed reference list requires NroffEdit version 1.40 or later.
+.ti 3
+[RFC6455]  Fette, I. and A. Melnikov, "The WebSocket Protocol", RFC 6455, December 2011
+
 
 .ti 0
-5.2  Informative References
+10.2  Informative References
 
 .in 14
 .\" \# REF  -- Managed reference list. Syntax: [RFC]nnnn[;Label], ... ,[RFC]nnnn[;Label]
@@ -177,11 +386,10 @@ Authors' Addresses
 
 .sp
 .nf
-Name
-and
-Address
+Tobias Oberstein
+Tavendo GmbH
 
-EMail: name@example.com
+EMail: tobias.oberstein@tavendo.de
 .sp
 .fi
 
