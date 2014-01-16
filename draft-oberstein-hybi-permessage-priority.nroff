@@ -91,19 +91,22 @@ Table of Contents
    4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  5
    5  permessage-priority extension . . . . . . . . . . . . . . . . .  8
      5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  8
-     5.2 Receiving and Sending  . . . . . . . . . . . . . . . . . . .  8
+     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
+       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  8
+       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . .  9
      5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . .  9
-   6  Security Considerations . . . . . . . . . . . . . . . . . . . . 10
-   7  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 10
-     7.1  Registration of the "permessage-priority" WebSocket
-          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 10
-     7.2  Registration of the "Per-message Priority" WebSocket 
-          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 10
-   8  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 11
-   9  References  . . . . . . . . . . . . . . . . . . . . . . . . . . 11
-     9.1  Normative References  . . . . . . . . . . . . . . . . . . . 11
-     9.2  Informative References  . . . . . . . . . . . . . . . . . . 11
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 11
+   6  Application Programming Interface Guideline . . . . . . . . . . 10
+   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 12
+   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 12
+     8.1  Registration of the "permessage-priority" WebSocket
+          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 12
+     8.2  Registration of the "Per-message Priority" WebSocket 
+          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 12
+   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 13
+   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
+     10.1  Normative References . . . . . . . . . . . . . . . . . . . 13
+     10.2  Informative References . . . . . . . . . . . . . . . . . . 13
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 13
 .fi
 .in 3
 
@@ -330,15 +333,27 @@ Since non-prioritized messages have an implicit "Message ID" 0, above applies to
 .ti 0
 5.1  Reordering Rules
 
-A frame of a message being sent with "Message Priority" P MAY be pulled ahead another frame inside the frame send queue, if and only if the other frame's "Message Priority" is strictly smaller than P.
+Frames in the frames sending queue are reordered according to these rules:
 
-In other words, frames of messages with equal "Message Priority" are never reordered, and a frame of a message of low priority is never pulled ahead of frames of messages with high priority.
+.in 6
+1) A frame of a message being sent with "Message Priority" P MUST be pulled ahead another frame inside the frames sending queue, if and only if the other frame's "Message Priority" is strictly smaller than P.
 
-Frames belonging to a single message, prioritized or non-prioritized MUST never be reordered.
+2) Frames that belong to a non-prioritized message are treated like frames belonging to a message with highest priority.
+.in 3
+
+In other words, frames of messages with equal "Message Priority" are never reordered and a frame of a message of low priority is never pulled ahead of frames of messages with high priority.
+
+Also, frames belonging to a single message, prioritized or non-prioritized are never reordered with respect to each other.
+
 
 
 .ti 0
-5.2 Receiving and Sending
+5.2  Receiving and Sending
+
+.ti 0
+5.2.1  Receiver Algorithm
+
+Receivers MUST perform an equivalent of the following algorithm.
 
 Upon receiving a non-control frame with the RSV2 bit set:
 
@@ -366,16 +381,25 @@ Upon receiving a non-control frame with the FIN bit set:
 2. Mark the message ID as non-started.
 .in 3
 
+Implementations SHOULD provide the "Message Priority" and "Response Priority Hint" for a received message to the application in the _A WebSocket Message Has Been Received_ event as outlined in section 6.
 
-Upon sending a message prioritized with "Message Priority" P and "Response Priority Hint" H
+
+.ti 0
+5.2.2  Sender Algorithm
+
+Senders MUST perform an equivalent of the following algorithm.
+
+Upon asked to send message prioritized with "Message Priority" P and "Response Priority Hint" H by the application:
 
 .in 6
 1. generate a new "Message ID" - ensuring that the ID is not currently in use
 
 2. fragment the message and produce message frames according to the format outlined in section 4
 
-3. enqueue the message fragments into the sending queue, reordering frames inside the queue according to P and the priorities of the messages corresponding to the frames already queued
+3. enqueue the message fragments into the sending queue, reordering frames inside the queue according to P and the priorities of the messages corresponding to the frames already queued in compliance with the ordering rules outlined in section 5.1
 .in 3
+
+Implementations SHOULD allow applications to specify the "Message Priority" and "Response Priority Hint" for a message to be sent as outlined in section 6.
 
 
 .ti 0
@@ -412,9 +436,47 @@ or
 .in 3
 
 
+.ti 0
+6  Application Programming Interface Guideline
+
+Applications SHOULD be able to provide "Message Priority" and "Response Priority Hint" when sending a WebSocket message
+
+.in 6
+.nf
+// Sending a WebSocket message, specifying "Message Priority" and
+// a "Response Priority Hint"
+//
+socket.send("My awesome message",
+               {'priority': 10, 'responsePriority': 5});
+.fi
+.in 3
+
+Applications SHOULD be provided the "Message Priority" and "Response Priority Hint" when receiving a WebSocket message
+
+.in 6
+.nf
+// Event handler fired upon having received a WebSocket message
+//
+socket.onmessage = function (evt) {
+
+   // The WebSocket message payload:
+   console.log(evt.data);
+
+   // The priority of the received message or null if no provided:
+   console.log(evt.priority);
+
+
+   // The response priority hint as specified by the sender
+   // or null if not provided:
+   console.log(evt.responsePriority);
+}
+.fi
+.in 3
+
+
 .bp
 .ti 0
-6  Security Considerations
+7  Security Considerations
 
 With Per-message Priority Extension active, there can be more than one message in flight
 in each direction, and hence, additional buffering might be required on endpoints and
@@ -430,10 +492,10 @@ connection, and fail the WebSocket connection when that limit is reached.
 
 
 .ti 0
-7  IANA Considerations
+8  IANA Considerations
 
 .ti 0 
-7.1  Registration of the "permessage-priority" WebSocket Extension Name
+8.1  Registration of the "permessage-priority" WebSocket Extension Name
 
 This section describes a WebSocket extension name registration in the WebSocket
 Extension Name Registry [RFC6455].
@@ -464,7 +526,7 @@ permessage-priority extension.
 
 
 .ti 0
-7.2  Registration of the "Per-message Priority" WebSocket Framing Header Bit
+8.2  Registration of the "Per-message Priority" WebSocket Framing Header Bit
 
 This section describes a WebSocket framing header bit registration in the WebSocket
 Framing Header Bits Registry [RFC6455].
@@ -494,16 +556,16 @@ messages to indicate whether the fragment belongs to a prioritized message or no
 
 
 .ti 0
-8  Acknowledgements
+9  Acknowledgements
 
 Tbd.
 
 
 .ti 0
-9  References
+10  References
 
 .ti 0 
-9.1  Normative References
+10.1  Normative References
 
 .in 14
 .\" \# REF  -- Managed reference list. Syntax: [RFC]nnnn[;Label], ... ,[RFC]nnnn[;Label]
@@ -519,7 +581,7 @@ Tbd.
 
 
 .ti 0
-9.2  Informative References
+10.2  Informative References
 
 .in 14
 .\" \# REF  -- Managed reference list. Syntax: [RFC]nnnn[;Label], ... ,[RFC]nnnn[;Label]
