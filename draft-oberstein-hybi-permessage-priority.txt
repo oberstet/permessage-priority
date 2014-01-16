@@ -84,7 +84,7 @@ Table of Contents
      5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
        5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  8
        5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . .  9
-     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . .  9
+     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 10
    6  Application Programming Interface Guideline . . . . . . . . . . 10
    7  Security Considerations . . . . . . . . . . . . . . . . . . . . 12
    8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 12
@@ -398,13 +398,13 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
 5.1  Reordering Rules
 
-   Frames in the frames sending queue are reordered according to these
+   Frames in the frame send queue are reordered according to these
    rules:
 
       1) A frame of a message being sent with "Message Priority" P MUST
-      be pulled ahead another frame inside the frames sending queue, if
-      and only if the other frame's "Message Priority" is strictly
-      smaller than P.
+      be pulled ahead another frame inside the frame send queue, if and
+      only if the other frame's "Message Priority" is strictly smaller
+      than P.
 
       2) Frames that belong to a non-prioritized message are treated
       like frames belonging to a message with highest priority.
@@ -427,7 +427,7 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
    Upon receiving a non-control frame with the RSV2 bit set:
 
       1. Read the "Message ID" and determine whether a prioritized
-      message with that ID was started
+      message with that ID was already started
 
       2. If no prioritized message with the received ID was started,
       read and remember "Message Priority" and "Response Priority Hint"
@@ -455,9 +455,9 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
    Upon receiving a non-control frame with the FIN bit set:
 
       1. Fire the _A WebSocket Message Has Been Received_ event with the
-      application payload received for the message with the given ID.
+      application payload received for the message with the given ID
 
-      2. Mark the message ID as non-started.
+      2. Mark the "Message ID" as non-started.
 
    Implementations SHOULD provide the "Message Priority" and "Response
    Priority Hint" for a received message to the application in the _A
@@ -466,10 +466,11 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
 5.2.2  Sender Algorithm
 
-   Senders MUST perform an equivalent of the following algorithm.
+   Senders MUST perform an equivalent of maintaining a frame send queue
+   and the following algorithm.
 
-   Upon asked to send message prioritized with "Message Priority" P and
-   "Response Priority Hint" H by the application:
+   Upon being asked to send message prioritized with "Message Priority"
+   P and "Response Priority Hint" H by the application:
 
       1. generate a new "Message ID" - ensuring that the ID is not
       currently in use
@@ -477,15 +478,37 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
       2. fragment the message and produce message frames according to
       the format outlined in section 4
 
-      3. enqueue the message fragments into the sending queue,
+      3. enqueue the message fragments into the frame send queue,
       reordering frames inside the queue according to P and the
       priorities of the messages corresponding to the frames already
       queued in compliance with the ordering rules outlined in section
       5.1
 
+   Upon being asked to send a non-prioritized message by the
+   application:
+
+      1. fragment the message; in accordance with section 4, the
+      fragments are just plain WebSocket message fragment with RSV2
+      unset
+
+      2. enqueue the fragment into the frame send queue as if a message
+      with highest priority was enqueued
+
    Implementations SHOULD allow applications to specify the "Message
    Priority" and "Response Priority Hint" for a message to be sent as
    outlined in section 6.
+
+ 
+
+
+Oberstein                Expires July 20, 2014                  [Page 9]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
+   Implementations SHOULD fragment messages into fragments of 1 - 128kB
+   to balance head-of-line blocking and latency limits with processing
+   overhead and wire-level efficiency.
 
 
 5.3  Intermediaries
@@ -498,14 +521,6 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
       2. MAY coalesce two or more consecutive fragments of a given
       prioritized message preserving the frame structure as outline in
- 
-
-
-Oberstein                Expires July 20, 2014                  [Page 9]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
-
       section 4
 
    and
@@ -539,6 +554,14 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
       // a "Response Priority Hint"
       //
       socket.send("My awesome message",
+ 
+
+
+Oberstein                Expires July 20, 2014                 [Page 10]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
                      {'priority': 10, 'responsePriority': 5});
 
    Applications SHOULD be provided the "Message Priority" and "Response
@@ -554,34 +577,11 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
          // The priority of the received message or null if no provided:
          console.log(evt.priority);
 
- 
-
-
-Oberstein                Expires July 20, 2014                 [Page 10]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
 
          // The response priority hint as specified by the sender
          // or null if not provided:
          console.log(evt.responsePriority);
       }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

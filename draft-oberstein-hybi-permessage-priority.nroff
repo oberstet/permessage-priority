@@ -94,7 +94,7 @@ Table of Contents
      5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
        5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  8
        5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . .  9
-     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . .  9
+     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 10
    6  Application Programming Interface Guideline . . . . . . . . . . 10
    7  Security Considerations . . . . . . . . . . . . . . . . . . . . 12
    8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 12
@@ -333,10 +333,10 @@ Since non-prioritized messages have an implicit "Message ID" 0, above applies to
 .ti 0
 5.1  Reordering Rules
 
-Frames in the frames sending queue are reordered according to these rules:
+Frames in the frame send queue are reordered according to these rules:
 
 .in 6
-1) A frame of a message being sent with "Message Priority" P MUST be pulled ahead another frame inside the frames sending queue, if and only if the other frame's "Message Priority" is strictly smaller than P.
+1) A frame of a message being sent with "Message Priority" P MUST be pulled ahead another frame inside the frame send queue, if and only if the other frame's "Message Priority" is strictly smaller than P.
 
 2) Frames that belong to a non-prioritized message are treated like frames belonging to a message with highest priority.
 .in 3
@@ -358,7 +358,7 @@ Receivers MUST perform an equivalent of the following algorithm.
 Upon receiving a non-control frame with the RSV2 bit set:
 
 .in 6
-1. Read the "Message ID" and determine whether a prioritized message with that ID was started
+1. Read the "Message ID" and determine whether a prioritized message with that ID was already started
 
 2. If no prioritized message with the received ID was started, read and remember "Message Priority" and "Response Priority Hint" and process the rest of the frame's payload as application data
 
@@ -376,9 +376,9 @@ Upon receiving a non-control frame with the RSV2 bit unset:
 Upon receiving a non-control frame with the FIN bit set:
 
 .in 6
-1. Fire the _A WebSocket Message Has Been Received_ event with the application payload received for the message with the given ID.
+1. Fire the _A WebSocket Message Has Been Received_ event with the application payload received for the message with the given ID
 
-2. Mark the message ID as non-started.
+2. Mark the "Message ID" as non-started.
 .in 3
 
 Implementations SHOULD provide the "Message Priority" and "Response Priority Hint" for a received message to the application in the _A WebSocket Message Has Been Received_ event as outlined in section 6.
@@ -387,19 +387,29 @@ Implementations SHOULD provide the "Message Priority" and "Response Priority Hin
 .ti 0
 5.2.2  Sender Algorithm
 
-Senders MUST perform an equivalent of the following algorithm.
+Senders MUST perform an equivalent of maintaining a frame send queue and the following algorithm.
 
-Upon asked to send message prioritized with "Message Priority" P and "Response Priority Hint" H by the application:
+Upon being asked to send message prioritized with "Message Priority" P and "Response Priority Hint" H by the application:
 
 .in 6
 1. generate a new "Message ID" - ensuring that the ID is not currently in use
 
 2. fragment the message and produce message frames according to the format outlined in section 4
 
-3. enqueue the message fragments into the sending queue, reordering frames inside the queue according to P and the priorities of the messages corresponding to the frames already queued in compliance with the ordering rules outlined in section 5.1
+3. enqueue the message fragments into the frame send queue, reordering frames inside the queue according to P and the priorities of the messages corresponding to the frames already queued in compliance with the ordering rules outlined in section 5.1
+.in 3
+
+Upon being asked to send a non-prioritized message by the application:
+
+.in 6
+1. fragment the message; in accordance with section 4, the fragments are just plain WebSocket message fragment with RSV2 unset
+
+2. enqueue the fragment into the frame send queue as if a message with highest priority was enqueued
 .in 3
 
 Implementations SHOULD allow applications to specify the "Message Priority" and "Response Priority Hint" for a message to be sent as outlined in section 6.
+
+Implementations SHOULD fragment messages into fragments of 1 - 128kB to balance head-of-line blocking and latency limits with processing overhead and wire-level efficiency.
 
 
 .ti 0
