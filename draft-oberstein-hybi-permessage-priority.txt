@@ -73,31 +73,31 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 Table of Contents
 
    1  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . .  3
-     1.1  Conformance Requirements and Complementary Terminology  . .  3
-     1.2  Complementary Terminology . . . . . . . . . . . . . . . . .  3
-   2  WebSocket Per-message Priority Extension  . . . . . . . . . . .  4
-   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  4
-     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  5
-   4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  5
-     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  7
-   5  permessage-priority extension . . . . . . . . . . . . . . . . .  8
-     5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  8
-     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
-       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  8
-       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . .  9
-     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 10
-   6  Application Programming Interface Guideline . . . . . . . . . . 10
-   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 11
-   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 11
+     1.1  Conformance Requirements and Complementary Terminology  . .  4
+     1.2  Complementary Terminology . . . . . . . . . . . . . . . . .  4
+   2  WebSocket Per-message Priority Extension  . . . . . . . . . . .  5
+   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  5
+     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  6
+   4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  6
+     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  8
+   5  permessage-priority extension . . . . . . . . . . . . . . . . .  9
+     5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  9
+     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  9
+       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  9
+       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . . 10
+     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 11
+   6  Application Programming Interface Guideline . . . . . . . . . . 12
+   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 13
+   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 13
      8.1  Registration of the "permessage-priority" WebSocket
-          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 12
+          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 13
      8.2  Registration of the "Per-message Priority" WebSocket 
-          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 12
-   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 13
-   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
-     10.1  Normative References . . . . . . . . . . . . . . . . . . . 13
-     10.2  Informative References . . . . . . . . . . . . . . . . . . 13
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 13
+          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 13
+   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 14
+   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+     10.1  Normative References . . . . . . . . . . . . . . . . . . . 14
+     10.2  Informative References . . . . . . . . . . . . . . . . . . 14
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 14
 
 
 
@@ -116,7 +116,68 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
 1  Introduction
 
-   <Introduction Text>
+   WebSocket provides a bidirectional, full-duplex, reliable message-
+   based channel with strict message ordering.
+
+   This document describes an extension to WebSocket that allows
+   priority-based message transmission under application control while
+   still providing well-defined ordering guarantees.
+
+   The ability for more flexible message ordering allows to address
+   scenarios where applications would like transmit messages according
+   to different priorities, minimizing latency for high-priority
+   messages while low-priority messages are being transmitted in
+   parallel.
+
+   The described permessage-priority extension targets goals different
+   from the multiplexing ("MUX") efforts started earlier in the context
+   of WebSocket, and different from the multiplexing as being specified
+   in SPDY and HTTP/2.0.
+
+   A typical scenario is the following.
+
+   Imagine a single-page Web application that consists of a set of
+   static resources (HTML, JavaScript and image files), and that
+   communicates with a backend or cloud service via WebSocket.
+
+   Once all the application's static resources have been cached in the
+   browser (potentially supported via Web app manifests), the
+   application will start rapidly and essentially no longer has
+   significant needs for HTTP, but maintain a single, long-lived
+   WebSocket connection to the backend.
+
+   However, the application may have a need for transmitting both
+   messages over WebSocket of two characteristics: small messages that
+   should be transmitted as fast as possible, and with minimal latency,
+   and large messages that carry large amounts of data, that should be
+   transferred making efficient use of available bandwidth, while at the
+   same time not slowing down or delaying the small message that would
+   like to have low-latency QoS.
+
+   What is needed is a message prioritization scheme that works on a
+   single WebSocket connection, where payload belonging to low-latency
+   QoS messages is transferred with priority over payload belonging to
+   large, low-priority messages.
+
+   This extension does not address scenarios of multiplexing multiple,
+   logical WebSocket connections over a single physical WebSocket
+   connection.
+ 
+
+
+Oberstein                Expires July 20, 2014                  [Page 3]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
+   Even in the scenario above, and when the application is open in
+   multiple browser tabs concurrently, the application can already
+   arrange for having only a single WebSocket connection opened to the
+   backend using other mechanisms available with HTML5. For example, the
+   app can open the (single) WebSocket connection from a shared Web
+   worker running in the background and have all application UI tabs
+   communicate with that worker. 
+
 
 1.1  Conformance Requirements and Complementary Terminology
 
@@ -157,19 +218,18 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
    Message payload (or payload of a message) means concatenation of the
    payload data portion of all frames representing a single message, as
    well as how /data/ is formed from in Section 6.2 of [RFC6455].
+ 
+
+
+Oberstein                Expires July 20, 2014                  [Page 4]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
 
    Extension in use next to extension X means the extension listed next
    to X in the "Sec-WebSocket-Extensions" header in the server's opening
    handshake as defined in Section 9.1 of [RFC6455].  Such an extension
    is applied to outgoing data from the application right after X on
- 
-
-
-Oberstein                Expires July 20, 2014                  [Page 3]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
-
    sender side but applied right before X to incoming data from the
    underlying transport.
 
@@ -214,18 +274,17 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
    client that receives a response accepting a permessage-priority
    extension offer together with such an extension MUST _Fail the
    WebSocket Connection_.
-
-   A server declines a permessage-priority extension offer by not
-   sending a "Sec-WebSocket-Extensions" header or by not including any
-   element with the value "permessage-priority" in the "Sec-WebSocket-
  
 
 
-Oberstein                Expires July 20, 2014                  [Page 4]
+Oberstein                Expires July 20, 2014                  [Page 5]
 
 Internet-Draft      Priority Extension for WebSocket        January 2014
 
 
+   A server declines a permessage-priority extension offer by not
+   sending a "Sec-WebSocket-Extensions" header or by not including any
+   element with the value "permessage-priority" in the "Sec-WebSocket-
    Extensions" header in it's response. If a server responds with no
    "Sec-WebSocket-Extensions" header or no "permessage-priority" element
    in the "Sec-WebSocket-Extensions" header, both endpoints proceed
@@ -271,17 +330,16 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
    The permessage-priority extension operates only on non-control
    messages. Control messages remain completely unchanged.
-
-   This document allocates the RSV2 bit of the WebSocket header for the
-   permessage-priority extension, and calls the bit "Per-message
  
 
 
-Oberstein                Expires July 20, 2014                  [Page 5]
+Oberstein                Expires July 20, 2014                  [Page 6]
 
 Internet-Draft      Priority Extension for WebSocket        January 2014
 
 
+   This document allocates the RSV2 bit of the WebSocket header for the
+   permessage-priority extension, and calls the bit "Per-message
    Priority". On a WebSocket connection where the permessage-priority
    extension is in use, this bit indicates whether a message is
    prioritized or not.
@@ -328,14 +386,17 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
     + - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +   
     |                       Frame Header (RSV2 unset)               |   
     +---------------------------------------------------------------+   
-    |                         Payload Data                          |   
-    +---------------------------------------------------------------+
  
 
 
-Oberstein                Expires July 20, 2014                  [Page 6]
+Oberstein                Expires July 20, 2014                  [Page 7]
 
 Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
+    |                         Payload Data                          |   
+    +---------------------------------------------------------------+
+
 
 
    Message ID:   32 bit
@@ -381,19 +442,19 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
       1. For fragmented messages, all but the first fragment for the
       given "Message ID" MUST have "Opcode" 0, and the last frame MUST
       have it's FIN bit set. When a continuation frame is received for a
+ 
+
+
+Oberstein                Expires July 20, 2014                  [Page 8]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
       "Message ID" that was not yet started, the peer MUST _Fail the
       WebSocket Connection_.
 
       2. All continuation frames of a fragmented message for a given
       "Message ID" MUST have "Opcode" 0. A peer MUST _Fail the WebSocket
- 
-
-
-Oberstein                Expires July 20, 2014                  [Page 7]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
-
       Connection_ when a non-continuation frame for an already started
       "Message ID" is received.
 
@@ -437,19 +498,19 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
       message with that ID was already started
 
       2. If no prioritized message with the received ID was started,
+ 
+
+
+Oberstein                Expires July 20, 2014                  [Page 9]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
       read and remember "Message Priority" and "Response Priority Hint"
       and process the rest of the frame's payload as application data
 
       3. If a prioritized message with the received ID was already
       started, process the rest of the frame's payload as application
- 
-
-
-Oberstein                Expires July 20, 2014                  [Page 8]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
-
       data
 
    Upon receiving a non-control frame with the RSV2 bit unset:
@@ -493,18 +554,19 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
       5.1
 
    Upon being asked to send a non-prioritized message by the
+ 
+
+
+Oberstein                Expires July 20, 2014                 [Page 10]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
    application:
 
       1. fragment the message; in accordance with section 4, the
       fragments are just plain WebSocket message fragment with RSV2
       unset
- 
-
-
-Oberstein                Expires July 20, 2014                  [Page 9]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
 
       2. enqueue the fragment into the frame send queue as if a message
       with highest priority was enqueued
@@ -548,21 +610,21 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
    or
 
+ 
+
+
+Oberstein                Expires July 20, 2014                 [Page 11]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
       1. MUST remove the "permessage-priority" element from the client's
       "Sec-WebSocket-Extensions" header in the opening handshake
 
 
 6  Application Programming Interface Guideline
 
- 
-
-
-Oberstein                Expires July 20, 2014                 [Page 10]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
-
-   Applications SHOULD be able to provide "Message Priority" and
+   Applications SHOULD be able to specify "Message Priority" and
    "Response Priority Hint" when sending a WebSocket message
 
       // Sending a WebSocket message, specifying "Message Priority" and
@@ -570,6 +632,18 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
       //
       socket.send("My awesome message",
                      {'priority': 10, 'responsePriority': 5});
+
+   Specifying "priority" is optional. If an application does not specify
+   "priority" when sending, the message is sent as an unprioritized
+   WebSocket message.
+
+   Specifying "responsePriority" is optional. However, if
+   "responsePriority" is specified by the application, the "priority"
+   MUST also be specified.
+
+   The permissible values for both "priority" and "responsePriority" (if
+   specified) are integers in the closed interval [1, 65535].
+
 
    Applications SHOULD be provided the "Message Priority" and "Response
    Priority Hint" when receiving a WebSocket message
@@ -581,14 +655,23 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
          // The WebSocket message payload:
          console.log(evt.data);
 
-         // The priority of the received message or null if no provided:
+         // The priority of the received message or null if non-prioritized message:
          console.log(evt.priority);
 
 
          // The response priority hint as specified by the sender
-         // or null if not provided:
+         // or null if not provided by the sender or non-prioritized message:
          console.log(evt.responsePriority);
       }
+
+   The values for both "priority" and "responsePriority" (if non-null)
+   are integers in the closed interval [1, 65535].
+ 
+
+
+Oberstein                Expires July 20, 2014                 [Page 12]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
 
 
 7  Security Considerations
@@ -609,14 +692,6 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
 
 8  IANA Considerations
-
- 
-
-
-Oberstein                Expires July 20, 2014                 [Page 11]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
 
 8.1  Registration of the "permessage-priority" WebSocket Extension Name
 
@@ -647,6 +722,14 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 8.2  Registration of the "Per-message Priority" WebSocket Framing Header
    Bit
 
+ 
+
+
+Oberstein                Expires July 20, 2014                 [Page 13]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
+
+
    This section describes a WebSocket framing header bit registration in
    the WebSocket Framing Header Bits Registry [RFC6455].
 
@@ -664,15 +747,7 @@ Internet-Draft      Priority Extension for WebSocket        January 2014
 
    Reference
 
-      Section X of this document.
-
- 
-
-
-Oberstein                Expires July 20, 2014                 [Page 12]
-
-Internet-Draft      Priority Extension for WebSocket        January 2014
-
+      Section 4 of this document.
 
    The "Per-message Priority" framing header bit is used on all
    fragments of non-control messages to indicate whether the fragment
@@ -703,6 +778,12 @@ Authors' Addresses
    Tavendo GmbH
 
    EMail: tobias.oberstein@tavendo.de
+ 
+
+
+Oberstein                Expires July 20, 2014                 [Page 14]
+
+Internet-Draft      Priority Extension for WebSocket        January 2014
 
 
 
@@ -725,4 +806,35 @@ Authors' Addresses
 
 
 
-Oberstein                Expires July 20, 2014                 [Page 13]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Oberstein                Expires July 20, 2014                 [Page 15]

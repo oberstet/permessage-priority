@@ -83,31 +83,31 @@ Table of Contents
 
 .nf
    1  Introduction  . . . . . . . . . . . . . . . . . . . . . . . . .  3
-     1.1  Conformance Requirements and Complementary Terminology  . .  3
-     1.2  Complementary Terminology . . . . . . . . . . . . . . . . .  3
-   2  WebSocket Per-message Priority Extension  . . . . . . . . . . .  4
-   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  4
-     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  5
-   4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  5
-     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  7
-   5  permessage-priority extension . . . . . . . . . . . . . . . . .  8
-     5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  8
-     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  8
-       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  8
-       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . .  9
-     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 10
-   6  Application Programming Interface Guideline . . . . . . . . . . 10
-   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 11
-   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 11
+     1.1  Conformance Requirements and Complementary Terminology  . .  4
+     1.2  Complementary Terminology . . . . . . . . . . . . . . . . .  4
+   2  WebSocket Per-message Priority Extension  . . . . . . . . . . .  5
+   3  Extension Negotiation . . . . . . . . . . . . . . . . . . . . .  5
+     3.1  Negotiation Examples  . . . . . . . . . . . . . . . . . . .  6
+   4  Framing . . . . . . . . . . . . . . . . . . . . . . . . . . . .  6
+     4.1  Fragment Processing . . . . . . . . . . . . . . . . . . . .  8
+   5  permessage-priority extension . . . . . . . . . . . . . . . . .  9
+     5.1  Reordering Rules  . . . . . . . . . . . . . . . . . . . . .  9
+     5.2  Receiving and Sending . . . . . . . . . . . . . . . . . . .  9
+       5.2.1  Receiver Algorithm  . . . . . . . . . . . . . . . . . .  9
+       5.2.2  Sender Algorithm  . . . . . . . . . . . . . . . . . . . 10
+     5.3  Intermediaries  . . . . . . . . . . . . . . . . . . . . . . 11
+   6  Application Programming Interface Guideline . . . . . . . . . . 12
+   7  Security Considerations . . . . . . . . . . . . . . . . . . . . 13
+   8  IANA Considerations . . . . . . . . . . . . . . . . . . . . . . 13
      8.1  Registration of the "permessage-priority" WebSocket
-          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 12
+          Extension Name  . . . . . . . . . . . . . . . . . . . . . . 13
      8.2  Registration of the "Per-message Priority" WebSocket 
-          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 12
-   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 13
-   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 13
-     10.1  Normative References . . . . . . . . . . . . . . . . . . . 13
-     10.2  Informative References . . . . . . . . . . . . . . . . . . 13
-   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 13
+          Framing Header Bit  . . . . . . . . . . . . . . . . . . . . 13
+   9  Acknowledgements  . . . . . . . . . . . . . . . . . . . . . . . 14
+   10  References . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+     10.1  Normative References . . . . . . . . . . . . . . . . . . . 14
+     10.2  Informative References . . . . . . . . . . . . . . . . . . 14
+   Authors' Addresses . . . . . . . . . . . . . . . . . . . . . . . . 14
 .fi
 .in 3
 
@@ -117,7 +117,28 @@ Table of Contents
 .ti 0
 1  Introduction
 
-<Introduction Text>
+WebSocket provides a bidirectional, full-duplex, reliable message-based channel with strict message ordering.
+
+This document describes an extension to WebSocket that allows priority-based message transmission under application control while still providing well-defined ordering guarantees.
+
+The ability for more flexible message ordering allows to address scenarios where applications would like transmit messages according to different priorities, minimizing latency for high-priority messages while low-priority messages are being transmitted in parallel.
+
+The described permessage-priority extension targets goals different from the multiplexing ("MUX") efforts started earlier in the context of WebSocket, and different from the multiplexing as being specified in SPDY and HTTP/2.0.
+
+A typical scenario is the following.
+
+Imagine a single-page Web application that consists of a set of static resources (HTML, JavaScript and image files), and that communicates with a backend or cloud service via WebSocket.
+
+Once all the application's static resources have been cached in the browser (potentially supported via Web app manifests), the application will start rapidly and essentially no longer has significant needs for HTTP, but maintain a single, long-lived WebSocket connection to the backend.
+
+However, the application may have a need for transmitting both messages over WebSocket of two characteristics: small messages that should be transmitted as fast as possible, and with minimal latency, and large messages that carry large amounts of data, that should be transferred making efficient use of available bandwidth, while at the same time not slowing down or delaying the small message that would like to have low-latency QoS.
+
+What is needed is a message prioritization scheme that works on a single WebSocket connection, where payload belonging to low-latency QoS messages is transferred with priority over payload belonging to large, low-priority messages.
+
+This extension does not address scenarios of multiplexing multiple, logical WebSocket connections over a single physical WebSocket connection.
+
+Even in the scenario above, and when the application is open in multiple browser tabs concurrently, the application can already arrange for having only a single WebSocket connection opened to the backend using other mechanisms available with HTML5. For example, the app can open the (single) WebSocket connection from a shared Web worker running in the background and have all application UI tabs communicate with that worker. 
+
 
 .ti 0
 1.1  Conformance Requirements and Complementary Terminology
@@ -448,7 +469,7 @@ or
 .ti 0
 6  Application Programming Interface Guideline
 
-Applications SHOULD be able to provide "Message Priority" and "Response Priority Hint" when sending a WebSocket message
+Applications SHOULD be able to specify "Message Priority" and "Response Priority Hint" when sending a WebSocket message
 
 .in 6
 .nf
@@ -459,6 +480,13 @@ socket.send("My awesome message",
                {'priority': 10, 'responsePriority': 5});
 .fi
 .in 3
+
+Specifying "priority" is optional. If an application does not specify "priority" when sending, the message is sent as an unprioritized WebSocket message.
+
+Specifying "responsePriority" is optional. However, if "responsePriority" is specified by the application, the "priority" MUST also be specified.
+
+The permissible values for both "priority" and "responsePriority" (if specified) are integers in the closed interval [1, 65535].
+
 
 Applications SHOULD be provided the "Message Priority" and "Response Priority Hint" when receiving a WebSocket message
 
@@ -471,16 +499,18 @@ socket.onmessage = function (evt) {
    // The WebSocket message payload:
    console.log(evt.data);
 
-   // The priority of the received message or null if no provided:
+   // The priority of the received message or null if non-prioritized message:
    console.log(evt.priority);
 
 
    // The response priority hint as specified by the sender
-   // or null if not provided:
+   // or null if not provided by the sender or non-prioritized message:
    console.log(evt.responsePriority);
 }
 .fi
 .in 3
+
+The values for both "priority" and "responsePriority" (if non-null) are integers in the closed interval [1, 65535].
 
 
 .ti 0
@@ -557,7 +587,7 @@ The message is prioritized or not.
 Reference
 
 .ti 6
-Section X of this document.
+Section 4 of this document.
 
 The "Per-message Priority" framing header bit is used on all fragments of non-control
 messages to indicate whether the fragment belongs to a prioritized message or not.
